@@ -167,6 +167,9 @@
   <textarea id="content" autocomplete="off" onkeyup="saveNote()"></textarea>
 </body>
 <script>
+  document.getElementById("title").addEventListener("change", saveNote)
+  document.getElementById("content").addEventListener("change", saveNote)
+
   function toggleSidebar() {
     const sidebar = document.querySelector("#sidebar")
     const content = document.querySelector("#content")
