@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset='utf-8'>
+  <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+  <title>dot-notes</title>
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
+  <style>
+    html {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      height: 100%;
+    }
+
+    #topbar {
+      display: flex;
+      background: grey;
+      height: 30px
+    }
+
+    #menuBtn {
+      background: none;
+      border: none;
+      width: 160px;
+      text-align: center;
+      color: white;
+    }
+
+    #menuBtn:hover {
+      background: rgb(83, 83, 83);
+    }
+
+    #topSpacer {
+      width: 130px;
+    }
+
+    #title {
+      width: calc(100% - 30px);
+      border: 1px;
+      box-sizing: border-box;
+      border: 1px solid grey;
+    }
+
+    #title:focus {
+      outline: none !important;
+    }
+
+    #sidebar {
+      display: none;
+      flex-direction: column;
+      background: darkgrey;
+      height: calc(100% - 30px);
+      width: 150px;
+      overflow: auto;
+    }
+
+    #sidebar.visible {
+      display: flex;
+    }
+
+    .note {
+      display: flex;
+      align-items: center;
+    }
+
+    .note:hover {
+      background: grey;
+    }
+
+    .note:hover .noteBtn {
+      color: white;
+    }
+
+    .note.active {
+      background: green;
+    }
+
+    .note.active:hover {
+      background: darkgreen;
+    }
+
+    .note.active .noteBtn {
+      color: white;
+    }
+
+    .noteBtn {
+      flex-grow: 1;
+      background: none;
+      border: none;
+      height: 32px;
+      padding: 0;
+      padding-left: 16px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: left;
+    }
+
+    .noteDel {
+      opacity: 0;
+      background: none;
+      padding: 0;
+      border: none;
+      width: 16px;
+      font-size: 18px;
+      color: red;
+      margin-right: 6px;
+    }
+
+    .note:hover .noteDel {
+      opacity: 1
+    }
+
+    .noteDel:hover {
+      color: darkred;
+    }
+
+    #createNote {
+      background: none;
+      line-height: 0;
+      height: 32px;
+      border: none;
+      color: white;
+      font-size: 24px;
+      padding: 0;
+    }
+
+    #createNote:hover {
+      background: grey;
+    }
+
+    #content {
+      position: absolute;
+      box-sizing: border-box;
+      resize: none;
+      top: 30px;
+      height: calc(100% - 30px);
+      width: 100%;
+      margin: 0;
+      border: 1px solid grey;
+      border-top: none;
+    }
+
+    #content.shift {
+      left: 150px;
+      width: calc(100% - 150px);
+    }
+
+    #content:focus {
+      outline: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="topbar">
+    <button onclick="toggleSidebar()" id="menuBtn">☰</button>
+    <input type="text" id="title" autocomplete="off" onkeyup="saveNote()" />
+  </div>
+  <div id="sidebar">
+    <div id="notesList"></div>
+    <button id="createNote" onclick="createNote()">+</button>
+  </div>
+  <textarea id="content" autocomplete="off" onkeyup="saveNote()"></textarea>
+</body>
+<script>
+  function toggleSidebar() {
+    const sidebar = document.querySelector("#sidebar")
+    const content = document.querySelector("#content")
+    if (sidebar.classList.contains("visible")) {
+      sidebar.classList.remove("visible")
+      content.classList.remove("shift")
+    } else {
+      sidebar.classList.add("visible")
+      content.classList.add("shift")
+    }
+  }
+
+  // Side effects / lifecycle
+
+  const existingNotes = JSON.parse(localStorage.getItem("notes")) || []
+
+  const notesData = []
+
+  // Handle "no notes"
+
+  if (existingNotes.length == 0) {
+    createNote()
+    checkForSingleNote()
+  }
+
+  // Populate elements and array
+
+  for (note of existingNotes) {
+    createNote(note)
+  }
+
+  openNote(0)
+
+  // Create note element
+
+  function createNote(note) {
+    index = notesData.length
+
+    if (!note) {
+      title = "New note"
+      notesData.push({
+        "title": "New note",
+        "content": ""
+      })
+    } else {
+      title = note.title
+      notesData.push(note)
+    }
+
+    const notesList = document.querySelector("#notesList")
+
+    const newNote = document.createElement("div")
+    newNote.classList.add("note")
+    newNote.id = index
+
+    const newNoteBtn = document.createElement("button")
+    newNoteBtn.classList.add("noteBtn")
+    newNoteBtn.innerText = title
+    newNoteBtn.onclick = openNote
+    newNote.appendChild(newNoteBtn)
+
+    const newNoteDel = document.createElement("button")
+    newNoteDel.classList.add("noteDel")
+    newNoteDel.innerText = "✕"
+    newNoteDel.onclick = deleteNote
+    newNote.appendChild(newNoteDel)
+
+    notesList.appendChild(newNote)
+
+    if (!note) {
+      openNote(index)
+      saveNote()
+    }
+
+    checkForSingleNote()
+  }
+
+  function saveNote() {
+    const index = document.querySelector(".active").id
+
+    notesData[index].title = document.querySelector("#title").value
+    notesData[index].content = document.querySelector("#content").value
+
+    localStorage.setItem("notes", JSON.stringify(notesData))
+    document.getElementById(index).querySelector(".noteBtn").innerText = notesData[index].title
+  }
+
+  function openNote(i) {
+    let index
+    if (isNaN(i)) {
+      if (this == window) {
+        index = 0
+      } else {
+        index = this.parentElement.id
+      }
+    } else {
+      index = i
+    }
+
+    document.querySelector("#title").value = notesData[index].title
+    document.querySelector("#content").value = notesData[index].content
+
+    for (note of document.getElementsByClassName("note")) {
+      note.classList.remove("active")
+    }
+
+    document.getElementsByClassName("note")[index].classList.add("active")
+
+  }
+
+  function deleteNote() {
+    let index = this.parentElement.id
+
+    if (document.querySelector(".active").id == index) {
+      openNote(index - 1)
+    }
+
+    notesData.splice(index, 1)
+
+    document.getElementById(index).remove()
+
+    localStorage.setItem("notes", JSON.stringify(notesData))
+
+    let i = 0
+
+    for (noteEl of document.getElementsByClassName("note")) {
+      noteEl.id = i
+      i++
+    }
+
+    checkForSingleNote()
+  }
+
+  function checkForSingleNote() {
+    if (document.getElementsByClassName("note").length == 1) {
+      document.querySelector(".noteDel").style.display = "none"
+    } else {
+      document.querySelector(".noteDel").style.display = "block"
+    }
+  }
+</script>
+
+</html>
